@@ -11,19 +11,21 @@ import json
 VERBOSE = True
 
 conf_file = "cf-ddns.conf"
+
+# make these non-global?
+api_url = "" # set via loadConf()
 api_key = "" # set via loadConf()
 zone_id = "" # set via loadConf()
 record_id = "" # set via loadConf()
 headers = "" # set via loadConf()
-url = "" # set via loadConf()
 
 def loadConf(filename):
     # load conf file and set the global vars
+    global api_url
     global api_key
     global zone_id
     global record_id
     global headers
-    global url
     vars = json.load(open(filename))
 
     api_key = vars.get("api_key")
@@ -33,7 +35,7 @@ def loadConf(filename):
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    url = (
+    api_url = (
         "https://api.cloudflare.com/client/v4/zones/%(zone_id)s/dns_records/%(record_id)s"
         % {"zone_id": zone_id, "record_id": record_id}
     )
@@ -49,7 +51,7 @@ def compareIP(ip1, ip2):
     return ip1 == ip2
 
 def getRecord():
-    r = requests.get(url, headers=headers)
+    r = requests.get(api_url, headers=headers)
     ip = str(r.json()['result']['content'])
     name = str(r.json()['result']['name'])
 
@@ -58,7 +60,7 @@ def getRecord():
 def updateRecord(ip):
     # using [https://github.com/creimers/cloudflare-ddns/blob/master/ddns.py] as reference
     data = {"content": ip } # the actual json data we're gonna send
-    r = requests.patch(url, headers=headers, data=json.dumps(data))
+    r = requests.patch(api_url, headers=headers, data=json.dumps(data))
     #if r.status_code != 200:
     #    print(r)
 
