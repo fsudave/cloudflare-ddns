@@ -40,7 +40,7 @@ def loadConf(filename):
         logger.debug('Loading config from ' + filename + '...')
         config = json.load(open(filename))
     except:
-        logger.critical('Could not open config file: ' + filename)
+        logger.critical('Could not open config file: ' + filename + '. Did you create cf-ddns.conf from cf-ddns_template.conf?')
         # add better error-handling here
         sys.exit(1)
     logger.debug('Config loaded.')
