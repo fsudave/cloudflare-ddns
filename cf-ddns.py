@@ -12,7 +12,7 @@ import logging
 
 # define some file locations
 log_filename = '/var/log/cf-ddns.log'
-conf_file = 'cf-ddns.conf'
+conf_file = './cf-ddns.conf'
 
 # set up logging
 logger = logging.getLogger('cf-ddns')
