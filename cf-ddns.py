@@ -4,33 +4,30 @@
 # by Dave Lambert 2024-09-22
 # This is a simple script to get your external/public IP address, and update a CloudFlare DNS record with that IP address via API.
 
-import sys
-import os
-import requests
-import json
-import logging
+import sys,os,requests,json,logging
 
 # define some file locations
-log_filename = '/var/log/cf-ddns.log'
+log_file = '/var/log/cf-ddns.log'
 conf_file = os.path.dirname(os.path.realpath(__file__)) + '/cf-ddns.conf'
 
 # set up logging
 logger = logging.getLogger('cf-ddns')
 try:
-    logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s: %(message)s')
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s: %(message)s')
 except:
-    print('Could not access log file at ' + log_filename + '. Please check that it exists and filesystem permissions.')
+    print('Could not access log file at ' + log_file + '. Please check that it exists and filesystem permissions.')
     sys.exit(1)
 
-# make these non-global?
-api_url = "" # set via loadConf()
-api_key = "" # set via loadConf()
-zone_id = "" # set via loadConf()
-record_id = "" # set via loadConf()
-headers = "" # set via loadConf()
+# Global variables, to be set via loadConf()
+api_url = ""
+api_key = ""
+zone_id = ""
+record_id = ""
+headers = ""
 
 def loadConf(filename):
 # PURPOSE: load conf file and set the global vars.
+# RETURNS: nothing
     global api_url
     global api_key
     global zone_id
@@ -41,7 +38,7 @@ def loadConf(filename):
         config = json.load(open(filename))
     except:
         logger.critical('Could not open config file: ' + filename + '. Did you create cf-ddns.conf from cf-ddns_template.conf?')
-        # add better error-handling here
+        # TODO: add better error-handling here
         sys.exit(1)
     logger.debug('Config loaded.')
 
@@ -59,15 +56,16 @@ def loadConf(filename):
 
 def getIP():
 # PURPOSE: Gets your IP address via public API.
+# RETURNS: STRING: IP address
     url = "https://api.ipify.org?format=json"
     #url = "https://api.myip.com"   # another URL to use if the above stops working
-    # **maybe eventually make my own at DHN?**
+    # TODO: maybe eventually make my own at DHN?
     logger.debug('Obtaining IP from ' + url + '...')
     try:
         r = requests.get(url)
     except:
         logger.critical('Could not obtain IP.')
-        # add better error-handling here
+        # TODO: add better error-handling here
         sys.exit(1)
     ip = str(r.json()["ip"])
     logger.debug('Obtained IP ' + ip)
@@ -75,6 +73,7 @@ def getIP():
 
 def compareIP(ip1, ip2):
 # PURPOSE: Compare two IP addresses (strings) to see if they match.
+# RETURNS: BOOLEAN: true if both inputs are the same IP
     logger.debug('Comparing IPs ' + ip1 + ' vs ' + ip2 + '...')
     if not ip1 == ip2:
         logger.info('IPs do not match.')
@@ -84,20 +83,22 @@ def compareIP(ip1, ip2):
 
 def getRecord():
 # PURPOSE: Obtain DNS record from Cloudflare via API.
+# RETURNS: STRING: IP address
     logger.debug('Obtaining DNS record from ' + api_url + '...')
     try:
         r = requests.get(api_url, headers=headers)
     except:
         logger.critical('Could not obtain DNS record.')
-        # add better error-handling here
+        # TODO: add better error-handling here
         sys.exit(1)
     ip = str(r.json()['result']['content'])
     name = str(r.json()['result']['name'])
     logger.debug('Obtained DNS record ' + name + ' which resolves to ' + ip)
-    return ip,name
+    return ip
 
 def updateRecord(ip):
 # PURPOSE: Update the DNS record in Cloudflare via API.
+# RETURNS: nothing
     # using [https://github.com/creimers/cloudflare-ddns/blob/master/ddns.py] as reference
     logger.debug('Updating DNS record via API...')
     data = {"content": ip } # the actual json data we're gonna send
@@ -105,7 +106,7 @@ def updateRecord(ip):
         r = requests.patch(api_url, headers=headers, data=json.dumps(data))
     except:
         logger.critical('Could not update DNS record.')
-        # add better error-handling here
+        # TODO: add better error-handling here
         #if r.status_coddde != 200:
         #    print(r)
         sys.exit(1)
@@ -115,7 +116,7 @@ def main():
     logger.info('STARTED')
     loadConf(conf_file)
     ip_actual = getIP()
-    ip_dns,name_dns = getRecord()
+    ip_dns = getRecord()
     if not compareIP(ip_actual,ip_dns): updateRecord(ip_actual)
     logger.info('FINISHED') 
 
