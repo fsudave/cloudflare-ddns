@@ -4,11 +4,16 @@
 # by Dave Lambert 2024-09-22
 # This is a simple script to get your external/public IP address, and update a CloudFlare DNS record with that IP address via API.
 
+import sys
 import os
 import requests
 import json
+import logging
+logger = logging.getLogger('cf-ddns')
 
 VERBOSE = True
+
+logging.basicConfig(filename='/var/log/cf-ddns.log', level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s: %(message)s')
 
 conf_file = "cf-ddns.conf"
 
@@ -26,7 +31,14 @@ def loadConf(filename):
     global zone_id
     global record_id
     global headers
-    vars = json.load(open(filename))
+    try:
+        logger.debug('Loading config from ' + filename + '...')
+        vars = json.load(open(filename))
+    except:
+        logger.critical('Could not open config file: ' + filename)
+        # add better error-handling here
+        sys.exit(1)
+    logger.debug('Config loaded.')
 
     api_key = vars.get("api_key")
     zone_id = vars.get("zone_id")
@@ -44,47 +56,59 @@ def getIP():
     url = "https://api.ipify.org?format=json"
     #url = "https://api.myip.com"   # another URL to use if the above stops working
     # **maybe eventually make my own at DHN?**
-    r = requests.get(url)
-    return str(r.json()["ip"])
+    logger.debug('Obtaining IP from ' + url + '...')
+    try:
+        r = requests.get(url)
+    except:
+        logger.critical('Could not obtain IP.')
+        # add better error-handling here
+        sys.exit(1)
+    ip = str(r.json()["ip"])
+    logger.debug('Obtained IP ' + ip)
+    return ip
 
 def compareIP(ip1, ip2):
+    logger.debug('Comparing IPs ' + ip1 + ' vs ' + ip2 + '...')
+    if not ip1 == ip2:
+        logger.info('IPs do not match.')
+    else:
+        logger.info('IPs match. Nothing further to do.')
     return ip1 == ip2
 
 def getRecord():
-    r = requests.get(api_url, headers=headers)
+    logger.debug('Obtaining DNS record from ' + api_url + '...')
+    try:
+        r = requests.get(api_url, headers=headers)
+    except:
+        logger.critical('Could not obtain DNS record.')
+        # add better error-handling here
+        sys.exit(1)
     ip = str(r.json()['result']['content'])
     name = str(r.json()['result']['name'])
-
+    logger.debug('Obtained DNS record ' + name + ' which resolves to ' + ip)
     return ip,name
 
 def updateRecord(ip):
     # using [https://github.com/creimers/cloudflare-ddns/blob/master/ddns.py] as reference
+    logger.debug('Updating DNS record via API...')
     data = {"content": ip } # the actual json data we're gonna send
-    r = requests.patch(api_url, headers=headers, data=json.dumps(data))
-    #if r.status_code != 200:
-    #    print(r)
+    try:
+        r = requests.patch(api_url, headers=headers, data=json.dumps(data))
+    except:
+        logger.critical('Could not update DNS record.')
+        # add better error-handling here
+        #if r.status_coddde != 200:
+        #    print(r)
+        sys.exit(1)
+    logger.info('DNS record updated.')
 
 def main():
+    logger.info('STARTED')
     loadConf(conf_file)
     ip_actual = getIP()
     ip_dns,name_dns = getRecord()
-    if not compareIP(ip_actual,ip_dns):
-        if VERBOSE:
-            print("\nFQDN: ", name_dns)
-            print("\nActual IP: ", ip_actual)
-            print("Resolved IP: ", ip_dns)
-            print("\nDNS record not in sync.")
-            print("\nUpdating DNS record...")
-        updateRecord(ip_actual)
-        if VERBOSE:
-            print("\nDNS record updated.") # add error-handling to this
-    else:
-        if VERBOSE:
-            print("\nFQDN: ", name_dns)
-            print("\nActual IP: ", ip_actual)
-            print("Resolved IP: ", ip_dns)
-            print("\nDNS record is in sync.")
-    print()
+    if not compareIP(ip_actual,ip_dns): updateRecord(ip_actual)
+    logger.info('FINISHED') 
 
 if __name__ == "__main__":
     main()
