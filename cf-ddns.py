@@ -9,13 +9,18 @@ import os
 import requests
 import json
 import logging
+
+# define some file locations
+log_filename = '/var/log/cf-ddns.log'
+conf_file = 'cf-ddns.conf'
+
+# set up logging
 logger = logging.getLogger('cf-ddns')
-
-VERBOSE = True
-
-logging.basicConfig(filename='/var/log/cf-ddns.log', level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s: %(message)s')
-
-conf_file = "cf-ddns.conf"
+try:
+    logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s: %(message)s')
+except:
+    print('Could not access log file at ' + log_filename + '. Please check that it exists and filesystem permissions.')
+    sys.exit(1)
 
 # make these non-global?
 api_url = "" # set via loadConf()
@@ -25,7 +30,7 @@ record_id = "" # set via loadConf()
 headers = "" # set via loadConf()
 
 def loadConf(filename):
-    # load conf file and set the global vars
+# PURPOSE: load conf file and set the global vars.
     global api_url
     global api_key
     global zone_id
@@ -33,16 +38,16 @@ def loadConf(filename):
     global headers
     try:
         logger.debug('Loading config from ' + filename + '...')
-        vars = json.load(open(filename))
+        config = json.load(open(filename))
     except:
         logger.critical('Could not open config file: ' + filename)
         # add better error-handling here
         sys.exit(1)
     logger.debug('Config loaded.')
 
-    api_key = vars.get("api_key")
-    zone_id = vars.get("zone_id")
-    record_id = vars.get("record_id")
+    api_key = config.get("api_key")
+    zone_id = config.get("zone_id")
+    record_id = config.get("record_id")
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
@@ -53,6 +58,7 @@ def loadConf(filename):
     )
 
 def getIP():
+# PURPOSE: Gets your IP address via public API.
     url = "https://api.ipify.org?format=json"
     #url = "https://api.myip.com"   # another URL to use if the above stops working
     # **maybe eventually make my own at DHN?**
@@ -68,6 +74,7 @@ def getIP():
     return ip
 
 def compareIP(ip1, ip2):
+# PURPOSE: Compare two IP addresses (strings) to see if they match.
     logger.debug('Comparing IPs ' + ip1 + ' vs ' + ip2 + '...')
     if not ip1 == ip2:
         logger.info('IPs do not match.')
@@ -76,6 +83,7 @@ def compareIP(ip1, ip2):
     return ip1 == ip2
 
 def getRecord():
+# PURPOSE: Obtain DNS record from Cloudflare via API.
     logger.debug('Obtaining DNS record from ' + api_url + '...')
     try:
         r = requests.get(api_url, headers=headers)
@@ -89,6 +97,7 @@ def getRecord():
     return ip,name
 
 def updateRecord(ip):
+# PURPOSE: Update the DNS record in Cloudflare via API.
     # using [https://github.com/creimers/cloudflare-ddns/blob/master/ddns.py] as reference
     logger.debug('Updating DNS record via API...')
     data = {"content": ip } # the actual json data we're gonna send
