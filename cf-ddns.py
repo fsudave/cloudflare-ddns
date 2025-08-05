@@ -5,6 +5,7 @@
 # This is a simple script to get your external/public IP address, and update a CloudFlare DNS record with that IP address via API.
 
 import sys,os,requests,json,logging
+from logging.handlers import RotatingFileHandler
 
 # define some file locations
 log_file = os.path.dirname(os.path.realpath(__file__)) + '/cf-ddns.log'
@@ -17,6 +18,11 @@ try:
 except:
     print('Could not access log file at ' + log_file + '. Please check that it exists and filesystem permissions.')
     sys.exit(1)
+
+logHandler = RotatingFileHandler(
+    log_file, maxBytes=5*1024*1024, backupCount=3 # 5 MB max, keep 3 backups
+)
+logger.addHandler(logHandler)
 
 # Global variables, to be set via loadConf()
 api_url = ""
