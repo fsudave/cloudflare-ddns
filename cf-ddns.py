@@ -7,7 +7,7 @@
 import sys,os,requests,json,logging
 
 # define some file locations
-log_file = '/var/log/cf-ddns.log'
+log_file = os.path.dirname(os.path.realpath(__file__)) + '/cf-ddns.log'
 conf_file = os.path.dirname(os.path.realpath(__file__)) + '/cf-ddns.conf'
 
 # set up logging
