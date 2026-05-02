@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # cf-ddns.py
 # by Dave Lambert 2024-09-22
