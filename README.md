@@ -1,24 +1,42 @@
-# README #
+# cloudflare-ddns
 
-### What is this repository for? ###
+Keeps a Cloudflare DNS A record in sync with your current public IP. Fetches the IP from [ipify](https://api.ipify.org), compares it to the existing record, and updates via the Cloudflare API only when it has changed.
 
-This is a simple script to get your external/public IP address, and update a CloudFlare DNS record with that IP address via API.
+## Requirements
 
-### Dependencies
+- Python 3
+- `requests` (`dnf install python3-requests` or `pip install requests`)
+- A Cloudflare [API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with DNS edit permission for the zone
 
-- Python (developed/tested with Python 3.9.18)
-    - [requests](https://pypi.org/project/requests/) module
-- Cloudflare API Key for your DNS Zone
-    - [https://developers.cloudflare.com/api/](https://developers.cloudflare.com/api/)
+## Setup
 
-### Installation
+```bash
+git clone git@github.com:fsudave/cloudflare-ddns.git /usr/local/bin/cloudflare-ddns
+cd /usr/local/bin/cloudflare-ddns
+cp cf-ddns_template.conf cf-ddns.conf
+```
 
-1. Clone this repo into a suitable location such as `/usr/local/bin`
-1. Copy the template file `cf-ddns_template.conf` to `cf-ddns.conf`
-    - Edit `cf-ddns.conf` with your API key, Zone ID, and Record ID (obtain from Cloudflare via Postman, for example).
-1. Create the log file: `sudo touch /var/log/cf-ddns.log`
-1. Test the script by running `./cf-ddns.py`
-1. Configure a cronjob to run it at a regular interval, say every 15 mins:
-    - Example: `*/15 * * * * /usr/local/bin/cloudflare-ddns/cf-ddns.py >/dev/null 2>&1`
-    - Installing it into the `root` user's crontab makes things easy.
+Edit `cf-ddns.conf` with your API token, zone ID, and record ID. Zone ID is on the zone **Overview** page in the Cloudflare dashboard (API section, right sidebar); record ID: `curl -s -H "Authorization: Bearer TOKEN" "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records?name=host.example.com" | jq -r '.result[0].id'`
 
+Restrict permissions on the config file:
+
+```bash
+chmod 600 cf-ddns.conf
+```
+
+Create the log file and test:
+
+```bash
+touch cf-ddns.log
+./cf-ddns.py
+```
+
+## Cron
+
+Run every 15 minutes from root's crontab:
+
+```
+*/15 * * * * /usr/local/bin/cloudflare-ddns/cf-ddns.py >/dev/null 2>&1
+```
+
+Logs rotate automatically (5 MB, 3 backups) in `cf-ddns.log` alongside the script.
